@@ -13,7 +13,7 @@ from groq import Groq
 from src.rag.config import cfg, GROQ_API_KEY
 from src.rag.generation.prompts import build_prompt
 from src.rag.ingestion.chunking import Chunk
-
+from src.rag.generation.prompts import build_prompt, SYSTEM_PROMPT
 
 def generate(question: str, chunks: list[Chunk]) -> str:
     prompt = build_prompt(question, chunks)
@@ -30,22 +30,29 @@ def _groq(prompt: str) -> str:
     client = Groq(api_key=GROQ_API_KEY)
     response = client.chat.completions.create(
         model=cfg.llm.groq_model,
-        messages=[{"role": "user", "content": prompt}],
+        
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ],
         temperature=cfg.llm.temperature,
         max_tokens=cfg.llm.max_tokens,
     )
     return response.choices[0].message.content
 
-
 def _ollama(prompt: str) -> str:
-    """Generation 100% locale -- aucune donnee sortante."""
+    """Generation 100% locale -- Utilisation du parametre natif 'system' d'Ollama."""
     response = requests.post(
         cfg.llm.ollama_url,
         json={
             "model": cfg.llm.ollama_model,
-            "prompt": prompt,
+            "system": SYSTEM_PROMPT,  
+            "prompt": prompt,         
             "stream": False,
-            "options": {"temperature": cfg.llm.temperature, "num_predict": cfg.llm.max_tokens},
+            "options": {
+                "temperature": 0.1,   
+                "num_predict": cfg.llm.max_tokens
+            },
         },
         timeout=300,
     )
